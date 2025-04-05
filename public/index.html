@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Assistant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            transition: background-color 0.3s ease;
+        }
+        header {
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 140px);
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+        .chat-input {
+            display: flex;
+            padding: 1rem;
+            border-top: 1px solid #e5e7eb;
+            background-color: white;
+        }
+        .chat-input input {
+            flex-grow: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 9999px;
+            margin-right: 0.5rem;
+            outline: none;
+        }
+        .chat-input button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 9999px;
+            color: white;
+            cursor: pointer;
+        }
+        .settings-panel {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+        .settings-section {
+            margin-bottom: 1.5rem;
+        }
+        .settings-section h3 {
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        .input-group {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+        .input-group input {
+            flex-grow: 1;
+            padding: 0.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.25rem;
+            margin-right: 0.5rem;
+        }
+        .input-group button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.25rem;
+            color: white;
+            cursor: pointer;
+        }
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .tag {
+            display: flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            border: 1px solid;
+            font-size: 0.875rem;
+        }
+        .tag-close {
+            margin-left: 0.25rem;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .theme-options {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .theme-btn {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 9999px;
+            border: none;
+            cursor: pointer;
+        }
+        .challenge-card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+        .challenge-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .challenge-actions button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+        .message-animation {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+        }
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            margin: 0 1px;
+            background-color: #9ca3af;
+            border-radius: 50%;
+            display: inline-block;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Theme styles */
+        .theme-blue {
+            --primary-color: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-light: #93c5fd;
+        }
+        .theme-purple {
+            --primary-color: #8b5cf6;
+            --primary-dark: #7c3aed;
+            --primary-light: #c4b5fd;
+        }
+        .theme-green {
+            --primary-color: #10b981;
+            --primary-dark: #059669;
+            --primary-light: #6ee7b7;
+        }
+        .theme-red {
+            --primary-color: #ef4444;
+            --primary-dark: #dc2626;
+            --primary-light: #fca5a5;
+        }
+        .theme-dark {
+            --primary-color: #1f2937;
+            --primary-dark: #111827;
+            --primary-light: #6b7280;
+            background-color: #111827;
+            color: #f3f4f6;
+        }
+        .theme-dark .chat-container,
+        .theme-dark .settings-panel,
+        .theme-dark .challenge-card,
+        .theme-dark .chat-input,
+        .theme-dark .chat-input input {
+            background-color: #1f2937;
+            color: #f3f4f6;
+            border-color: #374151;
+        }
+        .theme-dark .chat-input input::placeholder {
+            color: #9ca3af;
+        }
+        .theme-primary {
+            background-color: var(--primary-color);
+        }
+        .theme-button {
+            background-color: var(--primary-color);
+        }
+        .theme-button:hover {
+            background-color: var(--primary-dark);
+        }
+        .theme-border {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body class="theme-blue">
+    <header class="theme-primary text-white shadow-lg">
+        <h1>AI Chat Assistant</h1>
+        <button id="settingsBtn" class="bg-white text-gray-800 px-3 py-1 rounded-full">
+            <i class="fas fa-cog"></i> Settings
+        </button>
+    </header>
+
+    <div class="container">
+        <div class="chat-container">
+            <div id="chatMessages" class="chat-messages"></div>
+            <form id="chatForm" class="chat-input">
+                <input type="text" id="messageInput" placeholder="Type your message here..." autocomplete="off">
+                <button type="submit" class="theme-button">
+                    <i class="fas fa-paper-plane"></i> Send
+                </button>
+            </form>
+        </div>
+
+        <div id="settingsPanel" class="settings-panel hidden">
+            <div class="settings-section">
+                <h3>Your Goals</h3>
+                <div class="input-group">
+                    <input type="text" id="goalInput" placeholder="Add a goal...">
+                    <button id="addGoalBtn" class="theme-button">Add</button>
+                </div>
+                <div id="goalTags" class="tags-container"></div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Your Interests</h3>
+                <div class="input-group">
+                    <input type="text" id="interestInput" placeholder="Add an interest...">
+                    <button id="addInterestBtn" class="theme-button">Add</button>
+                </div>
+                <div id="interestTags" class="tags-container"></div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Theme</h3>
+                <div class="theme-options">
+                    <button class="theme-btn" data-theme="blue" style="background-color: #3b82f6;"></button>
+                    <button class="theme-btn" data-theme="purple" style="background-color: #8b5cf6;"></button>
+                    <button class="theme-btn" data-theme="green" style="background-color: #10b981;"></button>
+                    <button class="theme-btn" data-theme="red" style="background-color: #ef4444;"></button>
+                    <button class="theme-btn" data-theme="dark" style="background-color: #1f2937;"></button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <button id="requestChallengeBtn" class="theme-button w-full py-2">
+                    <i class="fas fa-trophy"></i> Request a Challenge
+                </button>
+            </div>
+        </div>
+
+        <div id="activeChallenge" class="challenge-card" style="display: none;">
+            <h3 class="text-xl font-bold mb-2">Active Challenge</h3>
+            <h4 id="challengeTitle" class="text-lg font-semibold mb-1"></h4>
+            <p id="challengeDescription" class="mb-2"></p>
+            <p class="text-sm"><strong>Time Required:</strong> <span id="challengeTime"></span></p>
+            <div class="challenge-actions">
+                <button id="completeChallenge" class="theme-button">
+                    <i class="fas fa-check"></i> Mark Complete
+                </button>
+                <button id="clearChallenge" class="bg-gray-200 text-gray-800">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // DOM elements
+            const chatForm = document.getElementById('chatForm');
+            const messageInput = document.getElementById('messageInput');
+            const chatMessages = document.getElementById('chatMessages');
+            const settingsBtn = document.getElementById('settingsBtn');
+            const settingsPanel = document.getElementById('settingsPanel');
+            const goalInput = document.getElementById('goalInput');
+            const addGoalBtn = document.getElementById('addGoalBtn');
+            const goalTags = document.getElementById('goalTags');
+            const interestInput = document.getElementById('interestInput');
+            const addInterestBtn = document.getElementById('addInterestBtn');
+            const interestTags = document.getElementById('interestTags');
+            const themeButtons = document.querySelectorAll('.theme-btn');
+            const requestChallengeBtn = document.getElementById('requestChallengeBtn');
+            const activeChallenge = document.getElementById('activeChallenge');
+            const challengeTitle = document.getElementById('challengeTitle');
+            const challengeDescription = document.getElementById('challengeDescription');
+            const challengeTime = document.getElementById('challengeTime');
+            const completeChallengeBtn = document.getElementById('completeChallenge');
+            const clearChallengeBtn = document.getElementById('clearChallenge');
+
+            // State
+            let goals = [];
+            let interests = [];
+            let currentTheme = 'blue';
+            let isBotTyping = false;
+
+            // Initialize
+            loadFromLocalStorage();
+            applyTheme(currentTheme);
+            checkForActiveChallenge();
+
+            // Event Listeners
+            chatForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                sendMessage();
+            });
+            settingsBtn.addEventListener('click', toggleSettings);
+            addGoalBtn.addEventListener('click', addGoal);
+            addInterestBtn.addEventListener('click', addInterest);
+            goalInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addGoal();
+                }
+            });
+            interestInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addInterest();
+                }
+            });
+            themeButtons.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const theme = this.getAttribute('data-theme');
+                    applyTheme(theme);
+                    saveToLocalStorage();
+                });
+            });
+            requestChallengeBtn.addEventListener('click', requestChallenge);
+            completeChallengeBtn.addEventListener('click', markChallengeComplete);
+            clearChallengeBtn.addEventListener('click', clearChallenge);
+
+            // Main sendMessage function
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (message === '') return;
+
+                addMessage('user', message);
+                messageInput.value = '';
+
+                showTypingIndicator();
+
+                fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, goals, interests }),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        removeTypingIndicator();
+                        addMessage('bot', data.response);
+                        if (data.challenge) {
+                            displayChallenge(data.challenge);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        removeTypingIndicator();
+                        addMessage('bot', 'Sorry, I encountered an error. Please try again later.');
+                    });
+            }
+
+            function addMessage(sender, text) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flex mb-4 message-animation ${sender === 'user' ? 'justify-end' : ''}`;
+
+                let avatarHTML = '';
+                let messageClass = '';
+
+                if (sender === 'user') {
+                    avatarHTML = `<div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-700 ml-3 flex-shrink-0"><i class="fas fa-user"></i></div>`;
+                    messageClass = 'bg-blue-100 rounded-lg rounded-tr-none';
+                } else {
+                    avatarHTML = `<div class="w-10 h-10 rounded-full theme-button flex items-center justify-center text-white flex-shrink-0"><i class="fas fa-robot"></i></div>`;
+                    messageClass = 'bg-gray-100 rounded-lg rounded-tl-none';
+                }
+
+                messageDiv.innerHTML = sender === 'user'
+                    ? `<div class="mr-3 p-3 ${messageClass} max-w-xs md:max-w-md lg:max-w-lg"><p>${formatMessageText(text)}</p></div>${avatarHTML}`
+                    : `${avatarHTML}<div class="ml-3 p-3 ${messageClass} max-w-xs md:max-w-md lg:max-w-lg"><p>${formatMessageText(text)}</p></div>`;
+
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            function formatMessageText(text) {
+                text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-blue-600 hover:underline">$1</a>');
+                text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                text = text.replace(/^\s*-\s+(.+)/gm, '<li>$1</li>');
+                text = text.replace(/(<li>.*<\/li>)/gs, '<ul class="list-disc pl-5 my-2">$1</ul>');
+                text = text.replace(/\n/g, '<br>');
+                return text;
+            }
+
+            function showTypingIndicator() {
+                if (!isBotTyping) {
+                    isBotTyping = true;
+                    const typingDiv = document.createElement('div');
+                    typingDiv.className = 'flex mb-4 typing-container';
+                    typingDiv.innerHTML = `
+                        <div class="w-10 h-10 rounded-full theme-button flex items-center justify-center text-white flex-shrink-0">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="ml-3 p-3 bg-gray-100 rounded-lg rounded-tl-none">
+                            <div class="typing-indicator"><span></span><span></span><span></span></div>
+                        </div>`;
+                    chatMessages.appendChild(typingDiv);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            }
+
+            function removeTypingIndicator() {
+                const typingContainer = document.querySelector('.typing-container');
+                if (typingContainer) typingContainer.remove();
+                isBotTyping = false;
+            }
+
+            function toggleSettings() {
+                settingsPanel.classList.toggle('hidden');
+            }
+
+            function addGoal() {
+                const goal = goalInput.value.trim();
+                if (goal && !goals.includes(goal)) {
+                    goals.push(goal);
+                    renderTags();
+                    goalInput.value = '';
+                    saveToLocalStorage();
+                }
+            }
+
+            function addInterest() {
+                const interest = interestInput.value.trim();
+                if (interest && !interests.includes(interest)) {
+                    interests.push(interest);
+                    renderTags();
+                    interestInput.value = '';
+                    saveToLocalStorage();
+                }
+            }
+
+            function removeGoal(goal) {
+                goals = goals.filter(g => g !== goal);
+                renderTags();
+                saveToLocalStorage();
+            }
+
+            function removeInterest(interest) {
+                interests = interests.filter(i => i !== interest);
+                renderTags();
+                saveToLocalStorage();
+            }
+
+            function renderTags() {
+                goalTags.innerHTML = '';
+                goals.forEach(goal => {
+                    const tagEl = document.createElement('div');
+                    tagEl.className = 'tag theme-border';
+                    tagEl.innerHTML = `<span>${goal}</span><span class="tag-close" data-goal="${goal}">×</span>`;
+                    goalTags.appendChild(tagEl);
+                });
+
+                document.querySelectorAll('.tag-close[data-goal]').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        removeGoal(this.getAttribute('data-goal'));
+                    });
+                });
+
+                interestTags.innerHTML = '';
+                interests.forEach(interest => {
+                    const tagEl = document.createElement('div');
+                    tagEl.className = 'tag theme-border';
+                    tagEl.innerHTML = `<span>${interest}</span><span class="tag-close" data-interest="${interest}">×</span>`;
+                    interestTags.appendChild(tagEl);
+                });
+
+                document.querySelectorAll('.tag-close[data-interest]').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        removeInterest(this.getAttribute('data-interest'));
+                    });
+                });
+            }
+
+            function applyTheme(theme) {
+                document.body.classList.remove('theme-blue', 'theme-purple', 'theme-green', 'theme-red', 'theme-dark');
+                document.body.classList.add(`theme-${theme}`);
+                document.querySelector('header').className = `theme-primary text-white shadow-lg`;
+                currentTheme = theme;
+            }
+
+            function saveToLocalStorage() {
+                const data = { goals, interests, theme: currentTheme };
+                localStorage.setItem('chatbotSettings', JSON.stringify(data));
+            }
+
+            function loadFromLocalStorage() {
+                const data = JSON.parse(localStorage.getItem('chatbotSettings') || '{}');
+                goals = data.goals || [];
+                interests = data.interests || [];
+                currentTheme = data.theme || 'blue';
+                renderTags();
+            }
+
+            function requestChallenge() {
+                addMessage('user', "Can you suggest a challenge for me?");
+                showTypingIndicator();
+
+                fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: "Generate a personalized challenge for me",
+                        goals: goals,
+                        interests: interests
+                    }),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        removeTypingIndicator();
+                        addMessage('bot', data.response);
+                        if (data.challenge) displayChallenge(data.challenge);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        removeTypingIndicator();
+                        addMessage('bot', 'Sorry, I encountered an error generating a challenge.');
+                    });
+            }
+
+            function displayChallenge(challenge) {
+                challengeTitle.textContent = challenge.title;
+                challengeDescription.textContent = challenge.description;
+                challengeTime.textContent = challenge.timeRequired;
+                activeChallenge.style.display = 'block';
+
+                localStorage.setItem('activeChallenge', JSON.stringify(challenge));
+            }
+
+            function checkForActiveChallenge() {
+                const stored = localStorage.getItem('activeChallenge');
+                if (stored) {
+                    const challenge = JSON.parse(stored);
+                    displayChallenge(challenge);
+                }
+            }
+
+            function markChallengeComplete() {
+                addMessage('user', "I completed the challenge!");
+                localStorage.removeItem('activeChallenge');
+                activeChallenge.style.display = 'none';
+            }
+
+            function clearChallenge() {
+                localStorage.removeItem('activeChallenge');
+                activeChallenge.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
