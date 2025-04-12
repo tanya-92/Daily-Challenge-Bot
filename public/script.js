@@ -12,55 +12,88 @@ document.addEventListener('DOMContentLoaded', function () {
     const addInterestBtn = document.getElementById('addInterestBtn');
     const interestTags = document.getElementById('interestTags');
     const themeButtons = document.querySelectorAll('.theme-btn');
+    const themeToggle = document.getElementById('themeToggle');
     const requestChallengeBtn = document.getElementById('requestChallengeBtn');
     const activeChallenge = document.getElementById('activeChallenge');
     const challengeTitle = document.getElementById('challengeTitle');
     const challengeDescription = document.getElementById('challengeDescription');
     const challengeTime = document.getElementById('challengeTime');
+    const challengeTimer = document.getElementById('challengeTimer');
     const completeChallengeBtn = document.getElementById('completeChallenge');
     const clearChallengeBtn = document.getElementById('clearChallenge');
+    const streak = document.getElementById('streak');
+    
+
+    
+
 
     // State
     let goals = [];
     let interests = [];
-    let currentTheme = 'blue';
+    let currentTheme = 'purple';
+    let isDarkMode = false;
     let isBotTyping = false;
+    let challengeStartTime = null;
+    let timerInterval = null;
 
     // Initialize
     loadFromLocalStorage();
     applyTheme(currentTheme);
     checkForActiveChallenge();
+    addWelcomeMessage();
 
     // Event Listeners
     chatForm.addEventListener('submit', function (e) {
         e.preventDefault();
         sendMessage();
     });
-    settingsBtn.addEventListener('click', toggleSettings);
+
+    settingsBtn.addEventListener('click', function() {
+        document.querySelector('.side-panel').classList.toggle('active');
+    });
+
+    themeToggle.addEventListener('click', toggleDarkMode);
+
     addGoalBtn.addEventListener('click', addGoal);
     addInterestBtn.addEventListener('click', addInterest);
+
     goalInput.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             addGoal();
         }
     });
+
     interestInput.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             addInterest();
         }
     });
+
     themeButtons.forEach(btn => {
         btn.addEventListener('click', function () {
             const theme = this.getAttribute('data-theme');
+            themeButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
             applyTheme(theme);
             saveToLocalStorage();
         });
     });
+
     requestChallengeBtn.addEventListener('click', requestChallenge);
     completeChallengeBtn.addEventListener('click', markChallengeComplete);
     clearChallengeBtn.addEventListener('click', clearChallenge);
+
+    // Add welcome message
+    function addWelcomeMessage() {
+        // Welcome message is now in HTML
+        setTimeout(() => {
+            if (chatMessages.querySelectorAll('.message').length === 0) {
+                addMessage('bot', 'Hi there! I\'m your AI Challenge Bot. I can help you with daily challenges and self-improvement. Try asking me for advice or request a challenge!');
+            }
+        }, 1000);
+    }
 
     // Main sendMessage function
     function sendMessage() {
@@ -69,6 +102,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         addMessage('user', message);
         messageInput.value = '';
+        messageInput.focus();
 
         showTypingIndicator();
 
@@ -94,34 +128,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function addMessage(sender, text) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = `flex mb-4 message-animation ${sender === 'user' ? 'justify-end' : ''}`;
+        messageDiv.className = `message ${sender}`;
 
-        let avatarHTML = '';
-        let messageClass = '';
-
-        if (sender === 'user') {
-            avatarHTML = `<div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-700 ml-3 flex-shrink-0"><i class="fas fa-user"></i></div>`;
-            messageClass = 'bg-blue-100 rounded-lg rounded-tr-none';
-        } else {
-            avatarHTML = `<div class="w-10 h-10 rounded-full theme-button flex items-center justify-center text-white flex-shrink-0"><i class="fas fa-robot"></i></div>`;
-            messageClass = 'bg-gray-100 rounded-lg rounded-tl-none';
-        }
-
-        messageDiv.innerHTML = sender === 'user'
-            ? `<div class="mr-3 p-3 ${messageClass} max-w-xs md:max-w-md lg:max-w-lg"><p>${formatMessageText(text)}</p></div>${avatarHTML}`
-            : `${avatarHTML}<div class="ml-3 p-3 ${messageClass} max-w-xs md:max-w-md lg:max-w-lg"><p>${formatMessageText(text)}</p></div>`;
+        const avatarIcon = sender === 'user' ? 'fa-user' : 'fa-robot';
+        
+        messageDiv.innerHTML = `
+            ${sender === 'bot' ? `<div class="message-avatar"><i class="fas ${avatarIcon}"></i></div>` : ''}
+            <div class="message-content">${formatMessageText(text)}</div>
+            ${sender === 'user' ? `<div class="message-avatar"><i class="fas ${avatarIcon}"></i></div>` : ''}
+        `;
 
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     function formatMessageText(text) {
-        text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-blue-600 hover:underline">$1</a>');
+        // Convert URLs to links
+        text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-link">$1</a>');
+        
+        // Convert markdown-style formatting
         text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        
+        // Convert bullet points
         text = text.replace(/^\s*-\s+(.+)/gm, '<li>$1</li>');
-        text = text.replace(/(<li>.*<\/li>)/gs, '<ul class="list-disc pl-5 my-2">$1</ul>');
+        text = text.replace(/(<li>.*<\/li>)/gs, '<ul class="message-list">$1</ul>');
+        
+        // Convert line breaks
         text = text.replace(/\n/g, '<br>');
+        
         return text;
     }
 
@@ -129,14 +164,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!isBotTyping) {
             isBotTyping = true;
             const typingDiv = document.createElement('div');
-            typingDiv.className = 'flex mb-4 typing-container';
+            typingDiv.className = 'message bot typing-container';
             typingDiv.innerHTML = `
-                <div class="w-10 h-10 rounded-full theme-button flex items-center justify-center text-white flex-shrink-0">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="ml-3 p-3 bg-gray-100 rounded-lg rounded-tl-none">
-                    <div class="typing-indicator"><span></span><span></span><span></span></div>
-                </div>`;
+                <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                <div class="message-content typing-indicator"><span></span><span></span><span></span></div>
+            `;
             chatMessages.appendChild(typingDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
@@ -144,12 +176,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function removeTypingIndicator() {
         const typingContainer = document.querySelector('.typing-container');
-        if (typingContainer) typingContainer.remove();
-        isBotTyping = false;
+        if (typingContainer) {
+            typingContainer.classList.add('fade-out');
+            setTimeout(() => {
+                typingContainer.remove();
+                isBotTyping = false;
+            }, 300);
+        }
     }
 
-    function toggleSettings() {
-        settingsPanel.classList.toggle('hidden');
+    function toggleDarkMode() {
+        isDarkMode = !isDarkMode;
+        if (isDarkMode) {
+            document.body.classList.add('theme-dark');
+            themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+        } else {
+            document.body.classList.remove('theme-dark');
+            themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+        }
+        saveToLocalStorage();
     }
 
     function addGoal() {
@@ -158,7 +203,11 @@ document.addEventListener('DOMContentLoaded', function () {
             goals.push(goal);
             renderTags();
             goalInput.value = '';
+            goalInput.focus();
             saveToLocalStorage();
+            
+            // Provide feedback
+            addMessage('bot', `I've added "${goal}" to your goals. This will help me provide more personalized challenges and advice.`);
         }
     }
 
@@ -168,7 +217,11 @@ document.addEventListener('DOMContentLoaded', function () {
             interests.push(interest);
             renderTags();
             interestInput.value = '';
+            interestInput.focus();
             saveToLocalStorage();
+            
+            // Provide feedback
+            addMessage('bot', `Great! I've added "${interest}" to your interests. I'll keep this in mind when suggesting challenges.`);
         }
     }
 
@@ -188,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
         goalTags.innerHTML = '';
         goals.forEach(goal => {
             const tagEl = document.createElement('div');
-            tagEl.className = 'tag theme-border';
+            tagEl.className = 'tag';
             tagEl.innerHTML = `<span>${goal}</span><span class="tag-close" data-goal="${goal}">×</span>`;
             goalTags.appendChild(tagEl);
         });
@@ -202,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
         interestTags.innerHTML = '';
         interests.forEach(interest => {
             const tagEl = document.createElement('div');
-            tagEl.className = 'tag theme-border';
+            tagEl.className = 'tag';
             tagEl.innerHTML = `<span>${interest}</span><span class="tag-close" data-interest="${interest}">×</span>`;
             interestTags.appendChild(tagEl);
         });
@@ -215,14 +268,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function applyTheme(theme) {
-        document.body.classList.remove('theme-blue', 'theme-purple', 'theme-green', 'theme-red', 'theme-dark');
+        document.body.classList.remove('theme-blue', 'theme-purple', 'theme-green', 'theme-red');
         document.body.classList.add(`theme-${theme}`);
-        document.querySelector('header').className = `theme-primary text-white shadow-lg`;
         currentTheme = theme;
+        
+        // Update active theme button
+        themeButtons.forEach(btn => {
+            if (btn.getAttribute('data-theme') === theme) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
     }
 
     function saveToLocalStorage() {
-        const data = { goals, interests, theme: currentTheme };
+        const data = { 
+            goals, 
+            interests, 
+            theme: currentTheme,
+            isDarkMode
+        };
         localStorage.setItem('chatbotSettings', JSON.stringify(data));
     }
 
@@ -230,7 +296,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = JSON.parse(localStorage.getItem('chatbotSettings') || '{}');
         goals = data.goals || [];
         interests = data.interests || [];
-        currentTheme = data.theme || 'blue';
+        currentTheme = data.theme || 'purple';
+        isDarkMode = data.isDarkMode || false;
+        
+        if (isDarkMode) {
+            document.body.classList.add('theme-dark');
+            themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+        }
+        
         renderTags();
     }
 
@@ -266,25 +339,172 @@ document.addEventListener('DOMContentLoaded', function () {
         challengeTime.textContent = challenge.timeRequired;
         activeChallenge.style.display = 'block';
 
-        localStorage.setItem('activeChallenge', JSON.stringify(challenge));
+        // Start the timer
+        challengeStartTime = new Date();
+        updateChallengeTimer();
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(updateChallengeTimer, 1000);
+
+        localStorage.setItem('activeChallenge', JSON.stringify({
+            ...challenge,
+            startTime: challengeStartTime.getTime()
+        }));
+        
+        // Add animation
+        activeChallenge.classList.add('pulse-animation');
+        setTimeout(() => {
+            activeChallenge.classList.remove('pulse-animation');
+        }, 1000);
+    }
+
+    function updateChallengeTimer() {
+        if (!challengeStartTime) return;
+        
+        const now = new Date();
+        const elapsed = now - challengeStartTime;
+        
+        const hours = Math.floor(elapsed / (1000 * 60 * 60));
+        const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
+        
+        challengeTimer.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
     function checkForActiveChallenge() {
         const stored = localStorage.getItem('activeChallenge');
         if (stored) {
             const challenge = JSON.parse(stored);
-            displayChallenge(challenge);
+            challengeTitle.textContent = challenge.title;
+            challengeDescription.textContent = challenge.description;
+            challengeTime.textContent = challenge.timeRequired;
+            activeChallenge.style.display = 'block';
+            
+            // Restore timer
+            if (challenge.startTime) {
+                challengeStartTime = new Date(challenge.startTime);
+                updateChallengeTimer();
+                if (timerInterval) clearInterval(timerInterval);
+                timerInterval = setInterval(updateChallengeTimer, 1000);
+            }
         }
     }
 
     function markChallengeComplete() {
+        const elapsedTime = challengeTimer.textContent;
         addMessage('user', "I completed the challenge!");
+        
+        // Add confetti effect
+        createConfetti();
+        
+        setTimeout(() => {
+            addMessage('bot', `Congratulations on completing your challenge! It took you ${elapsedTime}. Would you like another challenge?`);
+        }, 1000);
+        
         localStorage.removeItem('activeChallenge');
         activeChallenge.style.display = 'none';
+        clearInterval(timerInterval);
+        challengeStartTime = null;
+        
+        // Check streak completion and apply glow effect
+        checkStreakCompletion();
     }
 
     function clearChallenge() {
         localStorage.removeItem('activeChallenge');
         activeChallenge.style.display = 'none';
+        clearInterval(timerInterval);
+        challengeStartTime = null;
     }
+    
+    // Confetti effect for challenge completion
+    function createConfetti() {
+        const confettiContainer = document.createElement('div');
+        confettiContainer.className = 'confetti-container';
+        document.body.appendChild(confettiContainer);
+        
+        const colors = ['#8b5cf6', '#3b82f6', '#10b981', '#ef4444', '#f59e0b'];
+        
+        for (let i = 0; i < 100; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            confetti.style.animationDelay = Math.random() * 2 + 's';
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confettiContainer.appendChild(confetti);
+        }
+        
+        setTimeout(() => {
+            confettiContainer.remove();
+        }, 5000);
+    }
+    
+    // Add CSS for confetti
+    const confettiStyle = document.createElement('style');
+    confettiStyle.textContent = `
+        @keyframes confettiFall {
+            0% { transform: translateY(-100vh) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(360deg); }
+        }
+        
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        
+        .confetti {
+            position: absolute;
+            top: -10px;
+            width: 10px;
+            height: 10px;
+            opacity: 0.7;
+            animation: confettiFall linear forwards;
+        }
+        
+        @keyframes pulse-animation {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse-animation {
+            animation: pulse-animation 0.5s ease-in-out;
+        }
+        
+        .fade-out {
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
+        }
+        
+        .text-link {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+        
+        .message-list {
+            margin-left: 1rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+    `;
+    document.head.appendChild(confettiStyle);
+
+    // Function to check streak completion and apply glow effect
+    function checkStreakCompletion() {
+        const isStreakComplete = true; // Replace with actual logic to check streak completion
+
+        if (isStreakComplete) {
+            streak.classList.add('glow');
+        } else {
+            streak.classList.remove('glow');
+        }
+    }
+
+    // Call this function where appropriate, e.g., after updating the streak
+    checkStreakCompletion();
 });
